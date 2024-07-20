@@ -1,0 +1,14 @@
+可行方案：
+1、全源码工程，但排除资产目录。额外的runtime库，拼一个 ProjectForDesigner 出来。（起源方案）
+	Engine全工程库。
+	Game工程库，排除Content目录。
+	Content库。
+
+2、Git/SVN可以同名文件夹共存。prg/asset互相排除。（GSTM方案）
+
+Plugin怎么处理？
+
+不可行方案：
+1、SubModule不支持同名目录
+2、无免费且权威的SVN，不如自己搭建。
+3、Plugin目录难以区分，只能全盘照收。

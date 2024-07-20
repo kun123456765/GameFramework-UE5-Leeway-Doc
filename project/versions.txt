@@ -1,0 +1,65 @@
+
+版本:0.0.0.1
+项目协作环境(2024.07.16-?)
+
+[done-07.16-07.18]编译UE5
+	[done-07.16]engine submodule
+	[done-07.18]编译enigne
+
+[doing-07.18-?]建立GitProject(Leeway Project)
+	[done-07.18]Game项目
+	[doing]Git Project
+		[doing]源码隔离机制
+			[done-07.19]《源码隔离》方案设计
+			[done-07.20]GameProject库结构调整(源码库)
+			[doing]LeewayProject库结构调整(项目库)
+			[doing]搭建ProjectForDesigner(制作库)
+			[]PC包
+
+《Submodule的建立、使用、和手工修改》
+挪submodule
+将一个git作为submodule库并入另外一个
+错误1:git submodule fatal not a git repository
+错误2:fatal: 'git status --porcelain=2' failed in submodule
+git库改名
+
+
+[]第一关
+[]联机
+[]第二关
+
+
+支线:脚本语言
+[]
+
+支线:上线Steam
+[]
+
+支线:更新机制
+[]
+
+支线:Stack解析工具
+[]
+
+支线:自动更新ProjectForDesigner
+[]jenkins环境
+[]
+
+支线:资源目录规范
+[]
+
+支线:服务器列表机制
+[]
+
+版本:0.0.1.1
+CICD环境(开发)
+[]云出包
+[]上架流程
+
+版本:0.0.2.1
+多工种协作环境
+[]资源验证框架
+[]crash上报
+[]企业IM
+[]commit hook
+[]
