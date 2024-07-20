@@ -1,0 +1,12 @@
+git sumbodule init [name]
+git sumbodule deinit <name> -f
+git sumbodule update [name] --recursive
+
+.gitmodules
+.git/modules/<name>/
+.git & .gitdir
+
+改库
+1、config
+2、.gitmodules
+3、TortoiseGit Settings
