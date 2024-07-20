@@ -1,0 +1,13 @@
+《xcopy的使用技巧》
+/EXCLUDE 的规范
+	file+file
+	一行一个，不支持\/
+文件还是目录
+copy 和 xcopy 的\/
+路径超260的解决办法:https://maoyanqing.com/windows-max-path
+
+《rsync》
+https://repo.msys2.org/msys/x86_64/
+ libxxhash
+  libzstd
+   rsync

@@ -12,17 +12,9 @@
 		[doing]源码隔离机制
 			[done-07.19]《源码隔离》方案设计
 			[done-07.20]GameProject库结构调整(源码库)
-			[doing]LeewayProject库结构调整(项目库)
+			[done-07.20]LeewayProject库结构调整(项目库)
 			[doing]搭建ProjectForDesigner(制作库)
 			[]PC包
-
-《Submodule的建立、使用、和手工修改》
-挪submodule
-将一个git作为submodule库并入另外一个
-错误1:git submodule fatal not a git repository
-错误2:fatal: 'git status --porcelain=2' failed in submodule
-git库改名
-
 
 []第一关
 []联机

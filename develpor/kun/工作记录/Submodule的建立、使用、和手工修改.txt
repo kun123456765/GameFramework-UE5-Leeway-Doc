@@ -1,12 +1,48 @@
-git sumbodule init [name]
-git sumbodule deinit <name> -f
-git sumbodule update [name] --recursive
+by kun 2024.07.20
 
-.gitmodules
-.git/modules/<name>/
-.git & .gitdir
+# 建立Submodule
+TortoiseGit右键-Add Submodule
+完事之后并不能直接把Submodule拉下来，得按需用命令来搞。
 
-改库
-1、config
-2、.gitmodules
-3、TortoiseGit Settings
+git submodule init [name]
+	初始化,生成相关配置
+
+git submodule deinit <name> -f
+	反初始化,删除相关配置。加-f能自动删除目录
+
+git submodule update [name] --recursive
+	拉取库, 能递归拉所有子模块。
+
+需要注意两点：
+	1、提交内容得进Submodule目录里commit。
+	2、此时本地父目录的submodule pointer更新为刚提交的版本号，需要出去执行Commit。
+如果对方从来都是自己去Submodule手动pull，那pointer也就没啥用。主要是简化大家操作，一键最新。
+
+# 手工修改Submodule地址
+有时候submodule的repo地址改了，不想删除目录重搞，就需要手工重定向到新库地址。
+
+相关目录：
+	.git/modules/<name>/
+	modules是级联嵌套的。
+
+修改下列文件里的repo地址。
+	1、config
+	2、.gitmodules
+	3、TortoiseGit Settings
+
+# 手工添加Submodule
+有时候刚建立一个repo，把里面搞好，想直接往主repo工程里添加，免得来一道push/add sub/pull。
+此时可以
+	1、.git目录里的内容复制到目标repo的.git/modules/<name>/ 里。
+	2、抄一个.git文件来，改一下里面的.gitdir, 仔细算一下相对层级(加几个../)。
+这样做完后，需要init/update来几下，应该就好了。可以通过在子父repo各自commit来看看是否正常。
+如果失败就走正常的add流程吧。(我倒是成功了)
+
+# 错误
+错误1: git submodule fatal not a git repository
+repo地址没改全。
+ref:手工修改Submodule地址
+
+错误2:fatal: 'git status --porcelain=2' failed in submodule
+地址没改全 + 需要init/update。
+ref:手工添加Submodule

@@ -1,14 +1,53 @@
-可行方案：
-1、全源码工程，但排除资产目录。额外的runtime库，拼一个 ProjectForDesigner 出来。（起源方案）
-	Engine全工程库。
-	Game工程库，排除Content目录。
-	Content库。
+by kun 2024.07.20
 
-2、Git/SVN可以同名文件夹共存。prg/asset互相排除。（GSTM方案）
+# 可行方案
+全源码工程，但排除资产目录。（起源方案）
+大体思路如下：
+	Repo划分
+		1、Engine全工程库。
+		2、Game工程库，排除Content目录。
+		3、Content库。
+		4、额外的runtime库
+		5、拼一个 ProjectForDesigner 出来。
+	采用cicd脚本将源码工程必要文件拷贝到内容工程。
+	插件不做隔离，项目内代码使用UE的SudModule机制做区隔。
+
+实践之后工程结构如下：
+## 顶层项目工程
+leeway(repo-root)
+	project(repo-prg)
+	doc(repo-doc)
+	cicd(repo-cicd)
+
+## 源码工程
+project(repo-prg)
+	engine(repo-engine)
+	game(repo-game)
+		Config
+		Source
+		Content(repo-Content)
+
+## 内容工程
+project_for_designer(repo-des)
+	engine
+		Engine
+		Binaries
+		Config
+		Content
+		Plugins
+		Shaders
+	game
+		Config
+		Source
+		Content(repo-Content)
+
+
+# 备选方案
+Git/SVN可以同名文件夹共存。prg/asset互相排除。（GSTM方案）
 
 Plugin怎么处理？
 
-不可行方案：
+# 不可行方案
 1、SubModule不支持同名目录
 2、无免费且权威的SVN，不如自己搭建。
 3、Plugin目录难以区分，只能全盘照收。
