@@ -8,18 +8,20 @@
 
 [doing-07.18-?]建立GitProject(Leeway Project)
 	[done-07.18]Game项目
-	[doing]Git Project
-		[doing]源码隔离机制
+	[done-07.21]Git Project
+		[done-07.21]源码隔离机制
 			[done-07.19]《源码隔离》方案设计
 			[done-07.20]Project库结构调整(源码库)
 			[done-07.20]Leeway库结构调整(项目库)
-			[doing]搭建ProjectForDesigner(内容库)
-			[]PC包
+			[done-07.21]搭建ProjectForDesigner(内容库)
+	[doing]第一关
+	[]PC包
+	[]联机
+	[]第二关
 
-[]第一关
-[]联机
-[]第二关
 
+支线:服务器列表机制
+[]
 
 支线:脚本语言
 []
@@ -33,14 +35,10 @@
 支线:Stack解析工具
 []
 
-支线:自动更新ProjectForDesigner
-[]jenkins环境
+支线:jenkins
 []
 
 支线:资源目录规范
-[]
-
-支线:服务器列表机制
 []
 
 版本:0.0.1.1
