@@ -11,3 +11,5 @@ https://repo.msys2.org/msys/x86_64/
  libxxhash
   libzstd
    rsync
+filter rules
+   https://man7.org/linux/man-pages/man1/rsync.1.html#FILTER_RULES

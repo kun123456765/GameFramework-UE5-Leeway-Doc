@@ -11,9 +11,9 @@
 	[doing]Git Project
 		[doing]源码隔离机制
 			[done-07.19]《源码隔离》方案设计
-			[done-07.20]GameProject库结构调整(源码库)
-			[done-07.20]LeewayProject库结构调整(项目库)
-			[doing]搭建ProjectForDesigner(制作库)
+			[done-07.20]Project库结构调整(源码库)
+			[done-07.20]Leeway库结构调整(项目库)
+			[doing]搭建ProjectForDesigner(内容库)
 			[]PC包
 
 []第一关

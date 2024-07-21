@@ -1,18 +1,12 @@
 by kun 2024.07.20
 
-# 可行方案
-全源码工程，但排除资产目录。（起源方案）
-大体思路如下：
-	Repo划分
-		1、Engine全工程库。
-		2、Game工程库，排除Content目录。
-		3、Content库。
-		4、额外的runtime库
-		5、拼一个 ProjectForDesigner 出来。
-	采用cicd脚本将源码工程必要文件拷贝到内容工程。
-	插件不做隔离，项目内代码使用UE的SudModule机制做区隔。
+# 最终方案
+维护方只需要rysnc一下即可将runtime相关内容更新至内容工程。(cicd)
+ref:leeway/cicd/shell/sync_project_for_designer.sh
+使用方只需要clone内容repo即可运行。(repo)
+整体框架敲定，未来留意新增文件和目录即可。
 
-实践之后工程结构如下：
+工程结构如下：
 ## 顶层项目工程
 leeway(repo-root)
 	project(repo-prg)
@@ -31,23 +25,108 @@ project(repo-prg)
 project_for_designer(repo-des)
 	engine
 		Engine
-		Binaries
-		Config
-		Content
-		Plugins
-		Shaders
+			Binaries
+			Config
+			Content
+			Shaders
+			Plugins
+				/**/Binaries
+				/**/Config
+				/**/Content
+				/**/Resources
+				/**/Shaders
 	game
 		Config
 		Source
 		Content(repo-Content)
+		Plugins
+			/**/Binaries
+			/**/Config
+			/**/Content
+			/**/Resources
+			/**/Shaders
 
+## 以下是制作过程记录。
+
+# 可行方案
+全源码工程，但排除资产目录。（起源方案）
+大体思路如下：
+	Repo划分
+		1、Engine全工程库。
+		2、Game工程库，排除Content目录。
+		3、Content库。
+		4、额外的runtime库
+		5、拼一个 ProjectForDesigner 出来。
+	采用cicd脚本将源码工程必要文件拷贝到内容工程。
+	插件不做隔离，项目内代码使用UE的SudModule机制做区隔。
 
 # 备选方案
 Git/SVN可以同名文件夹共存。prg/asset互相排除。（GSTM方案）
 
-Plugin怎么处理？
-
-# 不可行方案
+# 坑
 1、SubModule不支持同名目录
 2、无免费且权威的SVN，不如自己搭建。
-3、Plugin目录难以区分，只能全盘照收。
+3、Plugin目录难以区分，只能全盘照收。(吗？)
+
+# Plugin怎么处理？
+直接无脑拷贝编译后的Engine太大了，90G。里面包含了太多对于runtime来说的非必要组件，入库毫无必要。
+得换个思路，尝试利用Setup.bat来缩减内容工程的尺寸。
+计划如下：(后来不用这么麻烦,只是此时还不知道“最小必要集合”是什么)
+	------------------|zip,移除源码部分，入库。
+	Engine
+		Binaries
+		Config
+		Extras
+			Redist
+		Plugins
+		Shaders
+	------------------|setup.bat
+	Engine
+		Binaries
+		Content
+		Extras
+		Plugins
+	Samples
+	Templates
+	------------------|编译后, include{*.modules,*.dll}
+	Engine
+		Binaries
+		Plugins
+	------------------|未来加入插件.
+	Engine
+		Plugins
+	------------------
+
+下载engine.zip(663M)，解压(2.2G)。此时是干净的工程，并且不需要入库...吗?
+根据之前的测试，保留必要文件夹。保留之后可以看到缺乏Content。
+根据Setup.bat的内容，可以看到需Extras\Redist。Extras只有28M且几乎不修改，因此全留着也行。
+Programs也很小，且运行Game并不需要它。
+整个Setup期间需要下载19G左右的内容。
+运行Setup.bat之后，有个.uedependencies文件。尚不清楚内里包含的这些文件是给源码用还是给runtime用。
+可以对比Epic商城的UE版本(这里用ue4.27)和源码版本不同阶段的工程目录情况。
+	目录	      4.27	.zip	setup	build	build(no pdb)
+	Binaries  12.9G	0.44G	14.4G	38.0G	15.7G
+	Content   1.02G	   0G	5.26G	5.26G	5.26G
+	Plugins   9.88G	9.06G	9.88G	88.0G	68.6G
+可以看到体积膨胀主要来自Setup和Build后的Plugins。
+因为不能无脑拷贝，因此针对build后的内容，需要采用rsync --include。
+引擎的Plugins属于Engine库。未来采用的其他Plugins直接先添加到源码工程，充分集成之后再通过cicd向内容工程同步。
+这样因为rsync步骤的存在而变得更可控，不然再搞个ExtraPlguns库会让管理变得相当复杂。
+Game/Plugins采用同样的策略。
+
+实践发现根本不需要保持Setup下载回来的内容，只需要
+1、保持之前实验的最小必要目录，其他目录直接不要了
+2、Binaries里将所有的.exe/.dll/.modules文件弄过去就可以跑起来了！
+3、Plugins采用同样思路，但是目录会多几个。
+
+因此最终情况如下:
+	目录	      build(rsync)
+	Binaries  6.63G(--include-from=include/ue_binaries)
+	Content   5.26G(all)
+	Plugins   5.33G(--include-from=include/ue_plugins)
+换策略之后, 总尺寸只有17.2G了.而且能跑起来!
+
+使用方只需要clone内容repo即可运行。
+维护方只需要rysnc一下即可更新内容工程。
+整体框架敲定，未来留意新增文件和目录即可。
+完美！17.2G入库！
