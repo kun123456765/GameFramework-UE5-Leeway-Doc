@@ -1,0 +1,38 @@
+by kun 2024.12.28
+
+#调查
+商店里比较知名的Locomotion案例及使用(13个)
+情况如下(按试用后的感觉排序)：
+	(GASP)Game Animation Sample
+		官方的motionmatching案例
+		效果自不必说。个人冠绝Lean有点过于倾斜于是尝试修改，还比较简单。
+		MM的方案在于需要配套的美术资产生产管线，得有专门的人力去调查MM匹配到错误动作时到底是哪方面出了问题（资产规格&精度/判断规则/Trajectory规则等）。
+		不是个人玩得起的东西，如果官方500多个动作之内没有想实现的效果，就基本难以加新的动作进去了。
+	(TNT)TNT Flexible Locomotion System.Multiplayer Ready
+		逻辑标签驱动的动画状态机，结构简单。基于BlendSpace，借鉴了ALS的Lean。
+		效果较好，结构简单。推荐使用。
+	(ALS)Advanced Locomotion System
+		大名鼎鼎，V4之后对GASP有做适配的MM版本。
+		非MM版本的由于Blending层级较多，CPU开销较大。(来自动作系统性能优化经验)
+	(ALC)Advanced Locomotion Component
+	(AGLS)Adventure Game Locomotion System
+	(IWALS)Interaction With Advanced Locomotion System v3.2.1 for UE5.3
+		这三个都是基于ALS做的业务层变化，因此效果和性能与ALS相当。
+	(UniLoco)Universal Locomotion
+	(ACF)Ascent Combat Framework
+		这俩都是往多样性做(Mount, Drive)，Demo手感不好。
+	SmartLocomotion
+		这个就属于学习版的效果，
+没运行成功
+	MoveIt!
+	Kai Locomotion System
+		5.4/5.5无法编译通过。
+	Dynamic Locomotion
+	LocoMotion Matching
+		插件结构缺失，Demo运行不起来。
+
+# 批量试用其他插件
+在game里建立一个Templates目录，把各种插件扔这里。这个方法和Engine的"游戏模板"基本一致。
+方便各种替换。
+
+

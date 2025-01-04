@@ -1,0 +1,19 @@
+by kun 2025.01.04
+
+# 创建目录结构
+原始工程是不包含Plugins目录的，需要自己创建。
+一个plugins包含:
+	uplugin文件，关键字段是"FriendlyName"，它是插件的引用名称。
+	在uproject里手动添加插件。
+Module规则: 一个Module需要下列两个结构.
+	xxx.Build.cs
+	class FxxxModule : public IModuleInterface
+当缺乏结构时(我是忘了IModuleInterface这茬)，插件编译会有问题。若需要临时屏蔽干扰，可以直接修改uplugin文件名后缀。
+
+# 代码进入插件
+建立Source目录，就可以往里面装代码了。
+尽量全部使用MinimalAPI标签，手工控制需要导出的函数，避免UE生成过多代码。
+
+# 资源进入插件
+建立Content目录，就可以往里面装资源了。
+但是引用插件里的资源，需要在ContentBrowser的设置中勾选"Show Plugin Content"。

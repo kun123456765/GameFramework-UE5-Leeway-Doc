@@ -1,0 +1,50 @@
+《xcopy的使用技巧》
+/EXCLUDE 的规范
+	file+file
+	一行一个，不支持\/
+文件还是目录
+copy 和 xcopy 的\/
+路径超260的解决办法:https://maoyanqing.com/windows-max-path
+
+《rsync》
+https://repo.msys2.org/msys/x86_64/
+ libxxhash
+  libzstd
+   rsync
+filter rules
+   https://man7.org/linux/man-pages/man1/rsync.1.html#FILTER_RULES
+
+《TP_TopDown》
+Character类是坏的
+SKM要更换ABP
+MeshComponent要改Transform
+GameMode无法选pawn和controller
+需要Game.Build.cs里添加 AIModule 和 Niagara模块。
+	FSubModule 需要看 xxx.Build.cs 里的名字。
+	Plugins的FriendlyName就是需要添加到Build.cs里的模块名。
+
+《打包》
+SDK未设置
+	需要安装VS时手工选win10 SDK。
+	DotNet相关dll被占用(用windows资源监测器搜DotNet，把相关的两个exe都结束(cmd.exe/dotnet.exe))
+
+
+《代码插件化》(kun 2024.12.28)
+在Plugins目录下创建目录，如下:
+Plugins/XXX
+(1)Plugins/XXX/xxx.uplugin
+Plugins/XXX/aaa
+(2)Plugins/XXX/aaa.h|cpp, 继承  IModuleInterface
+(3)Plugins/XXX/aaa.Build.cs
+Plugins/XXX/bbb.h|cpp, 继承  IModuleInterface
+Plugins/XXX/bbb.Build.cs
+1、插件描述文件，一般从别的地方拷贝一个过来。
+2、编译相关，必须的步骤
+3、编译相关，必须的步骤
+bbb一般是Editor相关代码.
+
+《淘宝购买插件并使用》(kun 2024.12.28)
+目前只见过两种形态：
+	形态一：zip包里包含Config|Content，这种直接拷贝到工程目录里就行。
+	形态二：zip包里需要放到Plugins目录里。
+为了避免干扰原内容，可以搞个Templates目录，装很多不同的项目内容。用哪个往外面拷贝哪个。
