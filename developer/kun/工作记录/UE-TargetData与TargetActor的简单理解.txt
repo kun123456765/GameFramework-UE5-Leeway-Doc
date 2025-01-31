@@ -1,0 +1,53 @@
+by kun 2025.01.28
+除夕快乐！
+
+关键流程:TargetData在多端的产生、传递、响应、清理、取消、归滚。
+1、产生
+本地端产生TargetData，任何客户端的流程都可以产生该数据，没有特殊规定。一般服务器不需要Targeting过程，直接验证客户端发过来的数据。
+GAS原生是用较为低效的TargetActor来创建这部分数据。Lyra则是直接在GA里创建。
+
+2、传递
+2.1、发起端：GAS是TargetActor通过回调抛给Task，Task里再调用ASC的RPC发向服务器端。
+2.1.1、本地端通知服务器：ASC:ServerSetReplicatedTargetData
+2.1.2、本地端通知服务器数据无效了：ASC:ServerSetReplicatedTargetDataCancelled
+2.2、接收端：GA向ASC注册TargetData的到达通知。通知也有两个，一个是数据到达，一个是数据失效了。
+2.2.1、Server端数据到达通知：ASC:AbilityTargetDataSetDelegate
+2.2.2、Server端数据无效通知：ASC:AbilityTargetDataCancelledDelegate
+2.2.2.1、无效数据的处理方法
+GAS这块处理的比较多了，使用上都基于PredictionKey。（需要单开一个主题，研究回滚的实现细节）
+简单来说，每次GA激活时，默认流程会在ASC:ActivationAbility流程里创建一个 Scope(FScopedPredictionWindow)，它会给GA赋予一个PredictionKey。（回滚流程使用）
+服务器只需要简单的CencelAbility即可触发后续基于这个key的各项事务的回滚。（暂未确认,2025.01.28）
+
+3、使用
+使用就是用TargetData去创建GE，并ApplyTo Source/Target。
+这里一般会处理成双端同构代码，因为数据的验证与回滚在2.2的流程里已经处理过了（需自己处理）。
+验证流程如果需要可以套上 WITH_SERVER_CODE ，确保不会随着客户端带出去。
+3.1、客户端使用
+客户端直接用，不等服务器，因为可以回滚的操作都携带PredictionKey。
+3.1.1、（这里有个疑问：如果回滚发生在客户端GA自己结束后，是否能正确处理？我猜能，需要确认,2025.01.28）
+3.2、服务器使用TargetData的回调，在2.2流程里注册。
+ASC->AbilityTargetDataSetDelegate.AddDelegate
+ASC->AbilityTargetDataCancelledDelegate.AddDelegate
+3.3、服务器确认数据有效
+	通过TargetData中的UniqueId发往客户端，处理一些表现上的事情。
+	回滚流程的发起点是ClientActivateAbilityFailed. （这里需要做实验）
+
+4、清理数据
+手动调用ConsumeClientReplicatedTargetData。清理TargetData，无后续，就是单纯清理。
+一般通过GA::EndAbility在服务器关闭流程。有个小差异，这里没有调用 TargetData::Reset，因此GenericEvents的内容就留下来了。暂时不懂为什么。
+（这里的"Client"的含义是什么？）目前看没有特别含义，可能算是“来自客户端的数据”。
+
+TargetActor本质是将一个Targeting过程明确了出来。这个流程不一定非要是个Actor。
+默认的TargetActor行为(1/2)：
+1.1、SpawnActor<TargetActor>：随着AbilityTask_WaitTargetData创建(传递TargetActorClass)。
+1.2、TargetActor::StartTargeting：创建之后立即执行，等于Setup行为，事务的初始化时机
+1.3.1、TargetActor::ConfirmTargetingAndContinue：内部函数，只结束Targeting行为，不删除Actor。比如箭留在身体上一段时间。
+1.3.2、TargetActor::ConfirmTargeting：这里取消了ASC的TargetData事件监听，等于从主流程断开了。
+1.3.3、通知服务器
+1.4、在调用Confirm之后，就发送TargetDataReadyDelegate，该事件被Task监听，然后Task就正常结束了。
+1.5、TargetActor::CancelTargeting：另外一种结束方法，也会从ASC流程断开。触发的是CanceledDelegate。
+1.6、BindToConfirmCancelInputs：第三种结束方法，连着ASC的AbilityLocalInputPressed相关。比如按下按键开始选择目标，抬起按键进行确认，就可以用这个机制。
+
+默认的TargetActor行为(2/2):
+	2.1、自行创建一个TargetActor，给Task。
+	2.2、后续一致。

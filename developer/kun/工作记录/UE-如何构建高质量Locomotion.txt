@@ -1,0 +1,142 @@
+by kun 2024.12
+
+【极简Locomotion】
+两层状态机(Base，Override)
+这个是极端简单的模型。只利用了骨骼动画系统中的"混合"(Blending)概念。
+
+Base层:
+状态：站定(Idle)、移动(Move)、倒地(Dead)
+状态转换关系：
+站定(Idle)<=>移动(Move)->倒地(Dead)
+站定(Idle)->倒地(Dead)
+Override层: 直接覆盖Base层的动画，如攻击动画，受击动画，死亡动画等。
+
+缺点：动作的衔接基本没法看，一般都是顺切或忍了。
+
+优点：易于实现，资源规格也简单，百无禁忌，拿来就播。
+
+可能的问题：
+1、滑步
+成因：动作资产里的移动速度和角色逻辑上的移动速度不匹配。
+修复：测量资产中的骨骼移动速度，去调整播放速率。
+2、倒脚
+成因：Override层的动作可能在Base层任意时刻发生，移动动作与衔接动作初始帧差别过大，一般是左右脚脚步与站立姿态之间的差距。
+修复：不修了，都采用这个方案了谁还在乎倒脚问题，别混合，直接权重秒拉满。总不会为一个攻击行为做“站立时发起”和“移动时发起”两套动作（吧？）
+
+进阶变化：上下半身分离
+基本思路是上下半身分别制作动画，最后上半身的动作Pose用Addtive的形式参与最终输出。
+进阶变化2：别半身了，大胆一点，直接左臂右臂拆得更细。
+原理没变，但是代价就是运行时效率爆炸，因为需要解算的Pose和计算Blending的次数都变多了。这个代价在移动端可能非常大，让你不得不启用某类骨骼LOD策略去降低计算任务总量。
+
+【基础Locomotion】
+基础改进：
+1、更多状态
+2、基于脚步的多动画混合策略（对同步组(SyncGroup)的应用方式之一）
+
+状态：站定(Idle)、起步(Start)、循环(Cycle)、停下(Stop)、折返(Pivot)
+相比极简模型，增加了起步(Start)/停下(Stop)/折返(Pivot)阶段。并将移动抽象成为了循环(Cycle)。
+状态转换关系：
+站定(Idle)->起步(Start)->循环(Cycle)->停下(Stop)->站定(Idle)
+起步(Start)<=>停下(Stop)
+起步(Start)->折返(Pivot)->->停下(Stop)
+循环(Cycle)<=>折返(Pivot)
+折返(Pivot)<=>折返(Pivot)
+
+进阶改进：
+1、折返(Pivot)
+pivot是为了解决“玩家操控方向与角色运动方向差距过大”时，给角色一个转向的过程。
+参考动画：MM_Unarmed_Jog_Fwd_Pivot
+
+2、混合空间(BlendSpace)
+有三种典型用法：
+2.1、移动动作混合空间(Lyra)，也是最常见的组织方式。
+4方向或8方向运动动作，多动作以某种纲量（玩家输入方向、角色朝向、速度朝向等）在多动作序列间做线性插值。
+
+2.2、走跑步幅混合空间(ALS)
+ALS有自己的方向混合策略，因此在步幅方面采用了基于速度的混合量纲。详见下一章节。
+
+2.3、倾斜趋势混合空间(ALS/GASP)
+用来表达加速度方向和速度方向之间的延迟，叠加在Cycle输出的Pose上。
+
+可能的问题：
+滑步、方向偏差。
+解决方案：要消除这些问题，需要做较为细致的工作，一般称为高级运动系统，去下一个主题来展开说。
+
+【高级Locomotion】
+高级Locomotion的目标是消除滑步、动作趋势与实际运动方向的偏差。
+ALS/Lyra/GASP是三套方案，有各自的细节和思路。
+
+新行为：TurnInPlace(原地转身)
+这个一般是在Idle时为了避免Aiming把头扭成猫头鹰那种270度，而引入的一种非玩家直接触发的自动行为。
+对应状态：IdleBreak, TurnInPlace, TurnInPlaceRecovery
+比较好理解，类似站定/起步/循环/停止/站定一样。
+状态转换关系：
+Idle->TurnInPlace<=>TurnInPlaceRecovery->Idle
+
+新行为：休闲动作(IdleBreak)
+给站定(Idle)做破重变化的行为。
+对应状态：休闲(IdleBreak)
+状态转换关系：
+Idle<=>IdleBreak->TurnInPlaceRecovery
+
+新行为：呼吸动作(SecondaryMotion)
+给角色叠加呼吸动作，呼吸是对基础姿态的修饰，用于增加生动性。
+？为什么需要针对不同状态的基础pose做不同的叠加？动作本身从数值上看不应该是相对变化吗？
+
+由于是针对表现质量提出的改进方案，我们从问题本身出发来讨论解决方案的思路。
+1、动作衔接的倒脚问题
+成因：参考之前描述。
+修复：在这个质量水平修复此问题需要参考动作美术和策划的设计意见。针对不同时机发生的倒脚现象，有不同的解决策略：
+
+1.1、对于四/八方向Locomotion的倒脚修复：
+症状："重心在前的左平移(左脚在后运动，参考ALS_N_Run_LF)" 如何在输入方向直接180度转向时衔接"重心在前的右平移(左脚在前运动，参考ALS_N_Run_RF)"？
+1.2.1、分别引入"重心在后的左平移(Run_LB)"，及“重心在后的右平移(Run_RB)”。
+1.2.2、增加新的状态转换关系，Move_LF->Move_RB->Move->RF， Move_RF->Move_LB->Move->LF
+1.2.3、根据动作的趋势，将两腿开始收拢的第一帧到两脚开始分开的第一帧视为“脚步有交叉”阶段(FeetCrossing)，Move_RB->Move_RF的切换要避开该时间段。可基于Curve或Notify在对应动作中采集数据，在TransationRule里检查。
+
+1.2、对于Override动画的倒脚修复：
+1.1.1、利用状态切换：
+攻击行为发起前角色走一个比平时更快的Cycle->Stop->Idle状态的转换，再播放攻击动作。或者动作美术觉得还是不够快，那就顺切到Idle以保证攻击动作的质量。
+1.1.2、修改策划案
+增加攻击行为，引入新技能“移动中的攻击”，并制作相应的动作，左右脚各一个，根据左右脚踩地的Event让程序配合播放。一般只能在Cycle阶段发起这种攻击（总不能一个攻击行为做四套(左/右脚*Start/Cycle)吧?)
+
+2、两套速度机制带来的滑步现象。
+成因：制作动作资产时，是无法精确参考逻辑运动参数的（ChararacterMovment的acceleration那些），我们也希望能保留动作资产中的“不规则变化”带来的真实感。两个系统的速度不匹配会带来视觉上的滑步问题。
+2.1、Start/Stop阶段的滑步问题。
+2.1.1、解决办法(UE5)：DistanceMatching。对动画序列采样时，不用基于TickDeltaTime的Position，而是通过逻辑位移量来计算动画资产中向对应的位移量的poisition(或者说帧号)。
+UE里直接使用AdvanceTimeByDistanceMatching节点即可。需要提前为动画序列生成位移量曲线。(参考 MM_Pistol_Jog_Pivot_Fwd 中名为“Distance”的Curve）
+2.1.2、解决办法(UE4-ALS)：VelocityMatching。ALS采用了“动态合成Start/Stop姿态”的策略，在 Cycle Pose 的基础上叠加了一个类似Lean的 AccelerationLean动作序列。一方面建立一个Stand<=>Walk<=>Run的混合空间(参见ALS_N_WalkRun_F)，另一方面则对 Stride Blend有过处理， 将其与Velocity关联上，去一个AnimationCurveData里查表，得到合适的StrideBlend值。
+
+2.2、多Rootmotion动作混合造成的轻微滑步问题
+成因(个人推测)：在2.1中，只解决了单个动画序列的滑步问题，但是不论采用哪种Matching策略,都会遇到无法找到一种合理描述多个动画序列共同产生的Rootmotion与速度之间的关系。
+解决办法：StrideWarping。一种基于LocomotionDisplacementSpeed 和 FootIK调整 的 Warping算法。UE5里叫做 AnimNode_StrideWarping。
+
+2.3、基于四方向BlendSpace动作混合引起的步幅不足而出现的轻微滑步问题
+成因：FBLR四方向动作组成的BlendSpace,当F+L 或 B+L混合出来的Pose，我们记VFL=(F.x, L.y)，VBF=(B.x, L.y)。步幅衰减在VFL方向还不然容易看出来，VBL则极为明显。
+（我推测）因为人类运动特点，大腿骨骼会发生roll旋转，导致 F.x, B.x不具备直接混合的条件了。UE的TwoWayBlend对Rotation的处理是“VectorMultiply(Rotation, Mult)”，并不是SLerp，所以整条腿就往内侧收缩了。
+解决办法：ALS中是根据VelocityBlend计算了一个轴向偏转程度(DiagonalScaleAmount)，用它直接通过Foot_IK_Root的Scale(x,y)来调整脚和小腿的伸缩，从视觉上加出一部分步幅。
+优点：在非轴向移动时，腿部确实拉的更开了，动作更舒展。
+缺点：这个调整方案基于人工拟合，所以很粗暴，只是持续时间很短暂不太能观察到。调整后的foot骨骼可能会直接穿到模型里面去，进而影响后续的贴地IK计算。另外小腿和脚会变长一点点啊！
+
+进阶改进：混合量纲的选择
+1、ALS的选择：
+1.1、VelocityBlend: 速度矢量 和 角色朝向的偏差。
+ALS将其纯量化，后又按X(1~0,0~-1),Y(1~0,0~-1)分成了F/B/L/R四个方向上的量，代替常见的玩家输入量Input。任何需要4向带Motion的动作混合时，使用该计算方法，如 ALS_N_LocoDetail_Accel_F/B/L/R。
+改进的点：
+1.1.1、加速度方向（来自玩家遥感输入）代表着最终期望的朝向，但是角色转向从预期上来讲是需要时间的，这个渐变过程需要一种描述方法，速度方向和root旋转的偏差携带了这个信息，用纯量的方式将信息提取出来了。
+1.1.2、在这个量纲维度上还加了用于控制平滑的与旧值插值的步骤。
+
+1.2、LeanAmount:加速度矢量 和 角色朝向的偏差。
+用于表达运动趋势的BlendSpace，如 ALS_N_Lean、ALS_N_Lean_Falling。与VelocityBlend类似原理，也是带插值平滑的。
+改进的点：不对FB,RL做更多区分，直接维持“水平/垂直”两个维度。
+
+2、Lyra的选择：
+2.1、AddtiveLeanAngle: 水平旋转的瞬时角速度。YawDeltaSpeed=(LastYaw-CurrentYaw)/DeltaTime。
+BS_MM_Rifle_Jog_Leans是BlendSpace1D，直接用 AddtiveLeanAngle 插值之后将Pose叠到 FullBody_CycleState 的结果上。
+
+2.2、不基于混合空间的四/八方向运动动作方向匹配策略
+AnimNode_OrientationWrapping：UE5提供的节点，其作用是旋转旋转Root节点到指定朝向，并同步修改多个脊柱骨骼及调整IK_Foot/IK_Hand。
+IK_Hand要填到脊柱的最后一个。假设“分布骨骼混合值(DistributedBoneOrientationAlpha)”是0.75， 通过多级衰减（0.75^6=18%），IK_Hand基本就不受原始轴向Pose的影响了。而IK_Foot的Alpha计算是"1.f - 分布骨骼混合值"，因此它也只有25%。
+从结果上看，角色的头部(Spine05->Neck01->Head)就基本是IdentityPose，又带点偏转。
+该方案不区分上下半身，只跟填入的要影响的骨骼有关。类似某种Control Rig节点的效果。
+美术喜欢这个方案。

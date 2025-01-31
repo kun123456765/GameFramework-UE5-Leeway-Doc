@@ -1,0 +1,169 @@
+----------------------------------------
+kun 2025.02.01
+----------------------------------------
+开始头顶标题坏了。BaseCharacter的ASC获取不到。【完成】
+修复完毕。ASC的赋值换到了Pawn的PlayerState相关事件里了。
+之前临时做在了PossessedBy/UnpossessedBy里，这个只在DS端发生。
+Attributes也需要声明Replicated + Lifetime函数，值才能正常Rep。
+
+----------------------------------------
+kun 2025.01.31
+----------------------------------------
+开始修复Stance的网络同步。【完成】
+修复完毕。坏了是因为ActorComponent默认没开网络同步，需要调用SetReplicatesByDefault。
+1、Stance数据需要放在BaseCharacter上。
+1.1、本来想着这些数据放在BaseCharacterMovementComp上，但是仔细考虑这是不对的，因为实际使用该数据的是SkeletalMeshComp。
+1.2、放SkeletalMeshComp上虽然对，但是不好，因为使用数据的时机是AnimInstance创建完成之后。这需要扩展SkeletalMeshComp，显然不合适。
+1.3、也许可以考虑使用一个装饰模式，将这部分功能拆分到别的文件里去。（下次一定）
+
+开始修复GA_Attack中的TargetActor提示PendingKill的问题。【完成】
+这个是因为服务器上TargetActor被不正确的释放了，背后问题比想象中要复杂。
+1、勾选ShouldProduceTargetDataOnServer字段，能确保Server上不会Task一激活就删对象。
+但是这样服务器也参与Targeting过程，由于服务器不更新骨骼的Transforms，因此AggGeom就是TPose Transform。
+得到的结果和客户端不一致；会产生第二份TargetData。
+2、问题是现在有两个端各自Targeting，那产生的两套TargetData怎么处理？【疑问】
+3、Simulated端也有 Overlap的DebugDraw。
+原来PIE里只要在服务器DrawDebug，就会在所有端画出来。厉害了，不用写RPC发到客户端绘制了。
+结论：要做“客户端检测，服务器用客户端数据”，就得
+1、TargetActor的Class的字段ShouldProduceTargetDataOnServer必须为false;
+2、两个端都要创建TargetActor，AbilityTask_WaitTargetData会在服务器侧了它（所以TargetActor这套流程就特别冗余）。
+3、只在客户端进行TargetActor的ConfirmTargeting操作。两个办法：一是自己做；二是通过Ability::ConfirmTaskByInstanceName。
+4、这样双端都会收到 AbilityTask_WaitTargetData::ValidData事件了.
+
+开始修复GA的动画同步。【完成】
+笑死，这块是之前没写完。需要仿AbilityTask_PlayMontage去填充ReplicatedMontageInfo。
+基本完全拷贝了一份。
+把AnimNotify的Payload扩展了，这块AnimInstance原本就支持。
+需要连根线出来输入Bind Event To XXXX这种形式，就可以使用Payload内容了。
+ASC的Montage同步每帧都在刷数据，还挺费的。
+如果自己要处理Montage同步，难道也要这样每帧监控montage变化吗？【疑问】
+
+头顶标题坏了。BaseCharacter的ASC获取不到。【未完成】
+呵呵。。。ASC的初始化确实没在联网模式好好整理过。明天再修吧。
+----------------------------------------
+kun 2025.01.30
+----------------------------------------
+碰撞伤害计算搞定了
+1、GPT说的乘法是错的，顺序是反的。
+2、Geom自身的Transform也是一层，要保留。
+3、左右两侧的骨骼不是绝对对称的，因此同一个偏移量无法直接给左右侧骨骼用，右侧的需要镜像一下。
+做了一组显示PhysicAsset的函数。略微调大了一下伤害体的Radius，现在看着很像回事了。
+UI血量基本搞定了。
+网络版工作不正常，明天开始调一波，确保网络模式有效再继续推进度。
+
+----------------------------------------
+kun 2025.01.29
+----------------------------------------
+目前Overlap在TargetActor类族里，我觉得这个需要挪到Targeting类族里去。搞定了。
+现在需要能让Targeting的判定区域支持Offset调整。
+尝试绘制了一下，Bone的Transform很诡异，无法直接拿来用，需要研究下为什么showCollision能绘制对。
+
+PS:找到一些可视化的线索:顺着“Show Collision”找。
+看到PhysicsAssetForDebug->GetCollisionMesh，它能通过AggregateGeom来填充 FSkeletalMeshSceneProxy::DebugDrawPhysicsAsset 所需信息，从而进行绘制。
+细节还需要看，这就有一些头绪了。
+
+----------------------------------------
+kun 2025.01.28
+----------------------------------------
+TargetActor的流程通了，但是很多细节要调整。
+
+关键流程:TargetData在多端的产生、传递、响应、清理、取消、归滚。
+1、产生
+本地端产生TargetData，任何客户端的流程都可以产生该数据，没有特殊规定。一般服务器不需要Targeting过程，直接验证客户端发过来的数据。
+GAS原生是用较为低效的TargetActor来创建这部分数据。Lyra则是直接在GA里创建。
+
+2、传递
+2.1、发起端：GAS是TargetActor通过回调抛给Task，Task里再调用ASC的RPC发向服务器端。
+2.1.1、本地端通知服务器：ASC:ServerSetReplicatedTargetData
+2.1.2、本地端通知服务器数据无效了：ASC:ServerSetReplicatedTargetDataCancelled
+2.2、接收端：GA向ASC注册TargetData的到达通知。通知也有两个，一个是数据到达，一个是数据失效了。
+2.2.1、Server端数据到达通知：ASC:AbilityTargetDataSetDelegate
+2.2.2、Server端数据无效通知：ASC:AbilityTargetDataCancelledDelegate
+2.2.2.1、无效数据的处理方法
+GAS这块处理的比较多了，使用上都基于PredictionKey。（需要单开一个主题，研究回滚的实现细节）
+简单来说，每次GA激活时，默认流程会在ASC:ActivationAbility流程里创建一个 Scope(FScopedPredictionWindow)，它会给GA赋予一个PredictionKey。（回滚流程使用）
+服务器只需要简单的CencelAbility即可触发后续基于这个key的各项事务的回滚。（暂未确认,2025.01.28）
+
+3、使用
+使用就是用TargetData去创建GE，并ApplyTo Source/Target。
+这里一般会处理成双端同构代码，因为数据的验证与回滚在2.2的流程里已经处理过了（需自己处理）。
+验证流程如果需要可以套上 WITH_SERVER_CODE ，确保不会随着客户端带出去。
+3.1、客户端使用
+客户端直接用，不等服务器，因为可以回滚的操作都携带PredictionKey。
+3.1.1、（这里有个疑问：如果回滚发生在客户端GA自己结束后，是否能正确处理？我猜能，需要确认,2025.01.28）
+3.2、服务器使用TargetData的回调，在2.2流程里注册。
+ASC->AbilityTargetDataSetDelegate.AddDelegate
+ASC->AbilityTargetDataCancelledDelegate.AddDelegate
+3.3、服务器确认数据有效
+	通过TargetData中的UniqueId发往客户端，处理一些表现上的事情。
+	回滚流程的发起点是ClientActivateAbilityFailed. （这里需要做实验）
+
+4、清理数据
+手动调用ConsumeClientReplicatedTargetData。清理TargetData，无后续，就是单纯清理。
+一般通过GA::EndAbility在服务器关闭流程。有个小差异，这里没有调用 TargetData::Reset，因此GenericEvents的内容就留下来了。暂时不懂为什么。
+（这里的"Client"的含义是什么？）目前看没有特别含义，可能算是“来自客户端的数据”。
+
+TargetActor本质是将一个Targeting过程明确了出来。这个流程不一定非要是个Actor。
+默认的TargetActor行为(1/2)：
+1.1、SpawnActor<TargetActor>：随着AbilityTask_WaitTargetData创建(传递TargetActorClass)。
+1.2、TargetActor::StartTargeting：创建之后立即执行，等于Setup行为，事务的初始化时机
+1.3.1、TargetActor::ConfirmTargetingAndContinue：内部函数，只结束Targeting行为，不删除Actor。比如箭留在身体上一段时间。
+1.3.2、TargetActor::ConfirmTargeting：这里取消了ASC的TargetData事件监听，等于从主流程断开了。
+1.3.3、通知服务器
+1.4、在调用Confirm之后，就发送TargetDataReadyDelegate，该事件被Task监听，然后Task就正常结束了。
+1.5、TargetActor::CancelTargeting：另外一种结束方法，也会从ASC流程断开。触发的是CanceledDelegate。
+1.6、BindToConfirmCancelInputs：第三种结束方法，连着ASC的AbilityLocalInputPressed相关。比如按下按键开始选择目标，抬起按键进行确认，就可以用这个机制。
+
+默认的TargetActor行为(2/2):
+	2.1、自行创建一个TargetActor，给Task。
+	2.2、后续一致。
+
+跟文帝交流了一下，学会了如何在BP里支持Struct泛型(wildcard型pin);这里需要写一个文档。(我成长了！）
+尝试之后发现 ActorTargeting 的视角下，无法获取全部信息。不得不将Context分成两个级别：
+ActorTargeting_DerivedClassContext;
+ActorTargeting_OwnerContext;
+因为
+1、数据需要根据情况在每个ActorTargeting之间共享。
+2、ActorTargeting 和 每帧需要修改的SubContext 之间有一个 M vs N 的关系。这让事情变得更复杂了。
+最后采用了 "ActorTargeting 去 OwnerContext 查询需要的数据"。包含“自己关心的”和“跨业务共享的(Owner上)”.
+----------------------------------------
+kun 2025.01.27
+----------------------------------------
+TargetActor的流程有点长，学了半天。
+ActorTargeting参考了GEComponent的设计，也搞了一套。编码细节有点多。。。
+总算编译通过了。睡觉。明天再调。
+
+----------------------------------------
+kun 2025.01.26
+----------------------------------------
+?GameplayDebugger里selectlocalplayer没有信息
+>需要Actor实现IAbilitySystemInterface，以便提供ASC。
+
+?GameplayAttribute属性在GE的Modifiers中显示不出来。
+>必须单独定义UPROPERTY的东西，不能包在某个#define里。
+我为了方便把定义包在了 ATTRIBUTE_ACCESSORS 宏里。试了半天和Blueprintable/BlueprintType, MinimalAPI/XXX_API都没有关系。必须单独写一遍。
+
+?想监听Montage里的事件还不是特别简单的事情。
+这块确实需要仔细想想怎么搞。
+肯定不拆逻辑Timeline，做不完。
+?伤害体的方案也是个事情，感觉应该用AbilityTargetActor来落地。
+----------------------------------------
+kun 2025.01.25
+----------------------------------------
+增加了GA执行流程的基本调试手段，没看出来有问题。
+又加了Montage的，能明显看到RepAnimationInfo 过来的时机很晚(几十帧)
+确认是PlayerState的 NetFrequency导致（默认是1），改成120就秒到账了。
+那ASC放PlayerState上就很有问题
+	1、低频就会遇到Montage播放延迟。
+	2、高频检查RepLayout的开销又顶不住。光ASC本身数据就挺多的， PlayerState 还要存放各类玩家背包数据，更顶不住了。
+PlayerController的默认频率到是100，要不往Controller上靠靠。
+*PC/PS各自作为ASCOwner的生命周期差异到底有多大是个问题。
+
+----------------------------------------
+kun 2025.01.24
+----------------------------------------
+GA同步有些问题:
+	1、GA在重复被激活
+	2、第三端看着不对劲。
+ASC/GE/GC还不是很清晰，需要继续深入阅读。【+3】
+?GameplayDebugger里selectlocalplayer没有信息

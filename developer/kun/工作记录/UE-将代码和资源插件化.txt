@@ -17,3 +17,39 @@ Module规则: 一个Module需要下列两个结构.
 # 资源进入插件
 建立Content目录，就可以往里面装资源了。
 但是引用插件里的资源，需要在ContentBrowser的设置中勾选"Show Plugin Content"。
+
+# Type可填写的值范围：
+namespace EHostType
+{
+    enum Type
+    {
+        Runtime,                    //运行时，任何情况下
+        RuntimeNoCommandlet,
+        RuntimeAndProgram,
+        CookedOnly,
+        Developer,                  //开发时使用的插件
+        Editor,                     //编辑器类型插件
+        EditorNoCommandlet,
+        Program,                    //只有运行独立程序时的插件
+        ServerOnly,
+        ClientOnly,
+        Max
+    };
+}
+
+# LoadingPhase的值范围：
+namespace ELoadingPhase
+{
+    enum Type
+    {
+        PostConfigInit,             //引擎完全加载前，配置文件加载后。适用于较底层的模块。
+        PreEarlyLoadingScreen,      //在UObject加载前，用于补丁系统
+        PreLoadingScreen,           //在引擎模块完全加载和加载页面之前
+        PreDefault,                 //默认模块加载之前阶段
+        Default,                    //默认加载阶段，在引擎初始化时，游戏模块加载之后
+        PostDefault,                //默认加载阶段之后加载
+        PostEngineInit,             //引擎初始化后
+        None,                       //不自动加载模块
+        Max
+    };
+}

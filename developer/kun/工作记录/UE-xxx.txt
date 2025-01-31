@@ -1,0 +1,6 @@
+by kun 2025.01.13
+
+1、动画缺少fbx的弊端
+2、让LinkedAnimGraph里的Slot起效
+3、生成Overlap事件（两者均需勾选Overlap，这里需要官方的结果矩阵表）
+4、一个动作里依次挥舞左右拳，如何让每拳的Overlap事件只判定一次？
