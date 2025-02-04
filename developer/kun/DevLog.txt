@@ -1,11 +1,66 @@
 ----------------------------------------
-kun 2025.02.04
+kun 2025.02.06
 ----------------------------------------
 
 ----------------------------------------
+kun 2025.02.05
+----------------------------------------
+开始搞【死亡流程】【完成】
+用ragdoll搞。倒地了开NoCollision。
+1、UE框架下什么叫做“死亡”？
+没有“死亡”，只有RestartPlayer的概念，死亡就是个纯业务逻辑。（这里先调查了复活流程）
+2、ABP和Ragdoll怎么协作？
+两者没关系，同时起效。
+Montage是算Pose。
+Ragdoll控制的PhysicAsset，间接控制Mesh。
+Ragdoll叠到Montage的结果上面。（或者反过来，看不出来）
+Ragdoll是复合功能，主要由SkeletalMesh的PhysicAsset提供骨骼位置计算。剩下控制Collision及其他配套逻辑。
+3、哪个类来响应血量为0？
+哪都行，我选择在Character类里做。
+4、死后GAS系统的处理。
+这取决于如何对待死亡后的对象，是保留然后走Reset流程，还是创建新对象。
+Reset思路工作量大，因为要清理各种情况下的残留。基本上等于做“对象池”，这个太贵了，做不起。
+
+开始搞【复活流程】【完成】
+1、UE框架下什么叫做“复活”？
+2、Lyra怎么处理复活的?
+Lyra的复活流程：
+1、GA_AutoRespawn( ActivationPolicy::OnSpawn)
+	通过 GameplayMessageSubsystem监听消息GameplayEvent::Reset。
+	但是就是没找到这个Reset消息是哪里发出的。按说应该是 Ability_Reset，但是没找到TriggerTag:GameplayEvent::RequestReset。放弃查找了，可能需要源码编译Engine才方便查。
+2、LyraGameMode::RequestPlayerRestartNextFrame( ServerRestartPlayer )
+3、void ALyraCharacter::UninitAndDestroy()
+	controller清理pawn;
+	character destroy自己;(SetLifeSpan(0.1) + SetActorHiddenInGame(false))
+	清理asc;
+
+相对来说比较顺利，就只是把俩逻辑穿起来。
+----------------------------------------
+kun 2025.02.04
+----------------------------------------
+【规划LWGameplayTags】【完成】
+《UE-GameplayTag方案选型.txt》
+用CompositeDataTable重新组织了目前产生的Tags。
+实际编辑效率较低，主要是因为GAS的Abiilty不是“技能”，因此技能的各种配置数据需要以某种形式“摘抄”到GAS的数据结构中。
+这种翻译工作手动完成就很低效。
+
+【攻击吸附】【完成】
+功能本身并不复杂，难的是动作本身的Rootmotion有效段的问题。
+由于是泥巴里洗出来的动作资产，因此Retarget后的结果跟想的完全不一样，具体哪段可以位移或旋转需要左右调调试试。
+AI写计算函数简直就是抄答案，爽飞了。DeepSeek NB！
+同时技能升级维度的灵感也来了：
+吸附：（吸附半径，吸附角度）
+不吸附：（位移缩放）
+这些都可以投入玩家的资源点数。
+
+规范化了一下drawdebug，未来可能仿照LogCategory来区分。
+
+开始搞【死亡流程】
+搞不了一点，睡觉。
+----------------------------------------
 kun 2025.02.03
 ----------------------------------------
-开始搞【自动回血】
+开始搞【自动回血】【完成】
 属性计算代码纯体力啊，眼睛都花了.
 
 试了2个小时，确认GE不能写逻辑，逻辑判断只能写到GE外面去。GEInstance从架构底层就不具备扩展性。
@@ -27,10 +82,10 @@ kun 2025.02.03
 要么就忍了这个错误，要么改用EffectExecutions进行更大范围的重载。
 我忍了。
 
-顺手把【GA给了两遍的BUG】修了。
+顺手把【GA给了两遍的BUG】【完成】修了。
 原因：PlayerState上会有一次默认的InitAbilityActorInfo调用。
 
-【自动激活GrantedGA】搞定了。
+【自动激活GrantedGA】【完成】搞定了。
 ----------------------------------------
 kun 2025.02.02
 ----------------------------------------
