@@ -1,7 +1,52 @@
 ----------------------------------------
+kun 2025.02.07
+----------------------------------------
+开始搞“GA在BTTask中的事务状态”。
+
+如何理解 BTNode 与 AITask的关系？“GameplayTaskOwnerInterface的必要性”。
+	GameplayTasksComponent 及 AIResource 的概念;
+
+坑1：由于GA的SpecHandle极难获取，加之BBKey的强类型配套代码极多，写了一大坨代码才打通GAS和AI的互通。
+坑2：只有Subtree的BTNode才会调用SetOwner函数，普通BTTask是不调的，神经病啊！
+
+Lyra的 AI是怎么做的？总不能它全是瞬发GA，所以AI不管吧？
+
+
+
+
+
+
+----------------------------------------
 kun 2025.02.06
 ----------------------------------------
+开始搞【NPC类】【完成】
+NPC类没有太多障碍，调整了一下ASC相关的创建与初始化流程。
+正式的GA_Death的触发源（来自BaseCharacter类）
+GA_Revive屏蔽了一下NPC，暂时先这样处理。
 
+开始搞【SpawnActor】【完成】
+刷怪在“如何可视化ActorSpawner”的问题上尝试了许久。
+先是采用了ChildActorComponent去做Preview，结果在这个Actor如何不干扰EditorWorld的问题上纠缠了很久。
+最后手工去创建这个PreviewActor了。（还发现了APreviewActor类，但没采用它，因为它是基于手工指定SKM的流程）
+略微尝试了下 OnActorSelectionChanged 和 GEditor->SelectActor。确保不会修改这个PreviewActor。
+
+开始搞【NPC移动】
+先问AI，对错参半。最后还是走到官方的教程了：
+AI文字：https://dev.epicgames.com/documentation/zh-cn/unreal-engine/behavior-tree-in-unreal-engine---quick-start-guide
+AI视频：https://www.youtube.com/watch?v=QJuaB2V79mU
+总教程：https://dev.epicgames.com/community/unreal-engine/learning
+趟坑：AIController只有PathFollowingComponent 和 ActionsComp。根据UE源码的说法，PawnAction是废弃概念，应该使用BehaviorTree来代替。
+需要手工添加 BehaviorTreeCoponent。Blackboard则”必须通过AIController::RunBehaviorTree“才能正确被赋值。BTComp上的DefaultBehaviorTreeAsset就是个摆设：本意是配合StartLogic函数使用，但是又不去更新AIController的Blackboard字段。
+Demo场景里是不带NavMesh数据的，需要自己添加 Nav
+然后就简单了，通过 Perception 或 PawnSceningComponent 的事件来更新BB，给BTTask提供Context。
+
+开始搞【NPC攻击】
+简单将GA_Attack变成”GameEvent Triggered“的。做个投送事件的BTTask即可。
+这里有两个坑：
+1、GA何时算结束？这算是老问题了。暂时用delay规避了，之后得研究下。
+2、服务器NPC没动画，攻击判定怎么搞？
+
+但不管怎么说，算是6号把流程拉完了。
 ----------------------------------------
 kun 2025.02.05
 ----------------------------------------
